@@ -1,0 +1,55 @@
+config:
+  target: 'http://localhost:3000'
+  plugins:
+    fake-data: 
+      randNumber:
+        min: 101
+        max: 200
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 10
+      name: Warm up the API
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: Ramp up to peak load
+      
+scenarios:
+  - flow:
+      - post:
+          url: "/data"
+          json:
+            name: '{{ $randProductName() }}'
+            value: '{{ $randNumber() }}'
+            category: '{{ $randDepartment() }}'
+            createdAt: '{{ $randPastDate() }}'
+      - get:
+          url: "/data?page={{ $randNumber() }}&limit=1"
+          capture:
+            - json: "$[0]._id"
+              as: dataId
+      - put:
+          url: "/data/{{ dataId }}"
+          json:
+            value: "{{ $randNumber() }}"
+      - delete:
+          url: "/data/{{ dataId }}"
+      - get:
+          url: "/data/search"
+          qs:
+            name: "ball"
+            category: "movies"
+          capture:
+            - json: "$[*]._id"
+              as: searchedIds
+      - get:
+          url: "/data/range"
+          qs:
+            minValue: "150"
+            maxValue: "200"
+      - get:
+          url: "/data/date"
+          qs:
+            startDate: "2023-01-01"
+            endDate: "2024-01-01"
