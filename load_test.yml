@@ -14,6 +14,9 @@ config:
       arrivalRate: 10
       rampTo: 50
       name: Ramp up to peak load
+    - duration: 300
+      arrivalRate: 50
+      name: Sustained peak load
       
 scenarios:
   - flow:
