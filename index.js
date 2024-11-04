@@ -11,10 +11,6 @@ const DataSchema = new mongoose.Schema({
   category: String,
   createdAt: { type: Date, default: Date.now }
 });
-
-DataSchema.index({ name: "text", category: "text" });
-DataSchema.index({ value: 1 });
-DataSchema.index({ createdAt: 1 });
   
 const Data = mongoose.model('Data', DataSchema);
 

@@ -9,6 +9,10 @@ services:
       - db-optimization
     volumes:
       - mongo_data:/data/db
+    deploy:
+      resources:
+        limits:
+          memory: "2G" 
 
   express-server:
     build: ./
