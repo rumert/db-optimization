@@ -1,19 +1,70 @@
-version: '3'
+version: '3.8'
 services:
-  mongo:
+  # Config Server Replica Set
+  mongoconfigsvr:
     image: mongo:8
-    container_name: mongo-database
+    container_name: mongo-config-server
+    command: --configsvr --replSet configReplSet --port 27019
     ports:
-      - "27017:27017"
+      - "27019:27019"
+    volumes:
+      - mongoconfig_data:/data/db
     networks:
       - db-optimization
-    volumes:
-      - mongo_data:/data/db
-    deploy:
-      resources:
-        limits:
-          memory: "2G" 
 
+  # Shard Servers
+  shard1:
+    image: mongo:8
+    container_name: mongo-shard1
+    command: --shardsvr --replSet shardReplSet1 --port 27018
+    ports:
+      - "27018:27018"
+    volumes:
+      - shard1_data:/data/db
+    networks:
+      - db-optimization
+
+  shard2:
+    image: mongo:8
+    container_name: mongo-shard2
+    command: --shardsvr --replSet shardReplSet2 --port 27017
+    ports:
+      - "27017:27017"
+    volumes:
+      - shard2_data:/data/db
+    networks:
+      - db-optimization
+
+  # Mongos Router
+  mongos:
+    image: mongo:8
+    container_name: mongos-router
+    command: > 
+      mongos --configdb configReplSet/mongo-config-server:27019 --bind_ip_all --port 27020
+    ports:
+      - "27020:27020"
+    volumes:
+      - mongos_data:/data/db
+    depends_on:
+      - mongoconfigsvr
+      - shard1
+      - shard2
+    networks:
+      - db-optimization
+      
+  # Initialization Helper Container
+  init-mongo:
+    image: mongo:8
+    container_name: mongo-init-sharding
+    depends_on:
+      - mongos
+    networks:
+      - db-optimization
+    entrypoint: ["sh", "-c", "sleep 20 && /scripts/init-sharding.sh"]
+    volumes:
+      - ./scripts/init-sharding.sh:/scripts/init-sharding.sh
+
+  # Server
   express-server:
     build: ./
     container_name: express-server
@@ -22,14 +73,16 @@ services:
     networks:
       - db-optimization
     depends_on:
-      mongo: 
-        condition: service_started
+      - mongos
     environment:
-      - MONGO_URL=mongodb://mongo:27017/db_optimization
+      - MONGO_URL=mongodb://mongos-router:27020/db-optimization
 
 networks:
   db-optimization:
     driver: bridge
 
 volumes:
-  mongo_data:
+  mongoconfig_data:
+  mongos_data:
+  shard1_data:
+  shard2_data:
