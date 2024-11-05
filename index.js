@@ -1,22 +1,9 @@
 const express = require('express');
-const mongoose = require('./db');
 const { faker } = require('@faker-js/faker');
+const { Data } = require('./models');
 
 const app = express();
 app.use(express.json());
-
-const DataSchema = new mongoose.Schema({
-  name: String,
-  value: Number,
-  category: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-DataSchema.index({ name: "text", category: "text" });
-DataSchema.index({ value: 1 });
-DataSchema.index({ createdAt: 1 });
-  
-const Data = mongoose.model('Data', DataSchema);
 
 app.get('/data', async (req, res) => {
   try {
@@ -117,7 +104,7 @@ app.get('/populate', async (req, res) => {
         name: faker.commerce.product(),
         value: faker.commerce.price(),
         category: faker.commerce.department(),
-        createdAt: faker.date.past(),
+        createdAt: faker.date.past({ years: 3 }),
       });
     }
     await Data.insertMany(bulkData);
