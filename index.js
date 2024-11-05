@@ -11,13 +11,17 @@ const DataSchema = new mongoose.Schema({
   category: String,
   createdAt: { type: Date, default: Date.now }
 });
+
+DataSchema.index({ name: "text", category: "text" });
+DataSchema.index({ value: 1 });
+DataSchema.index({ createdAt: 1 });
   
 const Data = mongoose.model('Data', DataSchema);
 
 app.get('/data', async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    const data = await Data.find().sort({ _id: -1 }).skip((page - 1) * limit).limit(limit);
+    const data = await Data.find().lean().sort({ _id: -1 }).skip((page - 1) * limit).limit(limit);
     res.status(200).json(data);
   } catch (error) {
     console.error(error);
@@ -60,11 +64,12 @@ app.get('/data/search', async (req, res) => {
   try {
     const { name, category } = req.query;
 
-    const query = {};
-    if (name) query.name = new RegExp(name, 'i');
-    if (category) query.category = new RegExp(category, 'i');
+    let query = {};
+    if (name || category) {
+      query = { $text: { $search: `${name || ''} ${category || ''}` } };
+    }
 
-    const data = await Data.find(query);
+    const data = await Data.find(query).lean().select('name category');
     res.status(200).json(data);
   } catch (error) {
     console.error(error);
@@ -76,11 +81,11 @@ app.get('/data/range', async (req, res) => {
   try {
     const { minValue, maxValue } = req.query;
 
-    const query = {};
+    let query = {};
     if (minValue) query.value = { ...query.value, $gte: parseInt(minValue) };
     if (maxValue) query.value = { ...query.value, $lte: parseInt(maxValue) };
 
-    const data = await Data.find(query);
+    const data = await Data.find(query).lean();
     res.status(200).json(data);
   } catch (error) {
     console.error(error);
@@ -92,11 +97,11 @@ app.get('/data/date', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const query = {};
+    let query = {};
     if (startDate) query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
     if (endDate) query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
 
-    const data = await Data.find(query);
+    const data = await Data.find(query).lean();
     res.status(200).json(data);
   } catch (error) {
     console.error(error);
@@ -106,15 +111,16 @@ app.get('/data/date', async (req, res) => {
 
 app.get('/populate', async (req, res) => {
   try {
+    let bulkData = [];
     for (let i = 0; i < 10000; i++) {
-      const data = new Data({
+      bulkData.push({
         name: faker.commerce.product(),
         value: faker.commerce.price(),
         category: faker.commerce.department(),
-        createdAt: faker.date.past()
+        createdAt: faker.date.past(),
       });
-      await data.save();
     }
+    await Data.insertMany(bulkData);
     console.log('Database populated with mock data');
     res.status(200).json('OK');
   } catch (error) {
