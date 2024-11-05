@@ -19,7 +19,10 @@ async function connectWithRetry(connectFunc, retries = 5, delay = 2000) {
 async function connectToMongoDB() {
   await connectWithRetry(async () => {
     await mongoose.connect(process.env.MONGO_URL, {
-      maxPoolSize: 8
+      maxPoolSize: 50,
+      minPoolSize: 10,
+      maxIdleTimeMS: 60000,
+      waitQueueTimeoutMS: 30000
     });
   });
 }
