@@ -1,0 +1,18 @@
+FROM mongo:8
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y cron
+
+RUN mkdir -p /scripts /backups
+COPY ./scripts/backup.sh /scripts/backup.sh
+RUN chmod +x /scripts/backup.sh
+
+RUN echo "* * * * * /scripts/backup.sh" > /etc/cron.d/mongos-cron
+RUN chmod 0644 /etc/cron.d/mongos-cron
+RUN crontab /etc/cron.d/mongos-cron
+
+RUN echo '#!/bin/bash\n\
+cron\n\
+mongos --configdb configReplSet/mongo-config-server:27019 --bind_ip_all --port 27020' > /scripts/start.sh
+RUN chmod +x /scripts/start.sh
+CMD ["/scripts/start.sh"]

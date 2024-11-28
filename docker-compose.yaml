@@ -37,14 +37,15 @@ services:
 
   # Mongos Router
   mongos:
-    image: mongo:8
+    build:
+      context: .
+      dockerfile: Dockerfile.mongos
     container_name: mongos-router
-    command: > 
-      mongos --configdb configReplSet/mongo-config-server:27019 --bind_ip_all --port 27020
     ports:
       - "27020:27020"
     volumes:
       - mongos_data:/data/db
+      - backup_data:/backups
     depends_on:
       - mongoconfigsvr
       - shard1
@@ -84,5 +85,6 @@ networks:
 volumes:
   mongoconfig_data:
   mongos_data:
+  backup_data:
   shard1_data:
   shard2_data:
